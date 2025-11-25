@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabase";
-import type { CurrentUser, MoodPin, Mood } from "../types";
+import type { CurrentUser, MoodPin, Mood, fromDbMood, toDbMood } from "../types";
 import { fromDbMood as convertFromDbMood, toDbMood as convertToDbMood } from "../types";
 
 /**
@@ -25,12 +25,14 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     .gte('created_at', `${today}T00:00:00`)
     .lt('created_at', `${today}T23:59:59`);
 
-  const hasSubmittedPin = !countError && (count ?? 0) > 0;
+  const todayPinCount = !countError ? (count ?? 0) : 0;
+  const hasSubmittedPin = todayPinCount > 0;
 
   return {
     id: userId,
     email,
     hasSubmittedPin,
+    todayPinCount,
   };
 }
 

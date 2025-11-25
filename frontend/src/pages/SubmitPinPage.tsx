@@ -15,11 +15,11 @@ export default function SubmitPinPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [hasSubmittedToday, setHasSubmittedToday] = useState(false);
+  const [todayPinCount, setTodayPinCount] = useState(0);
   const [lat, setLat] = useState(39.9522);
   const [lng, setLng] = useState(-75.1932);
   const [pinPlaced, setPinPlaced] = useState(false);
-  
+
   const navigate = useNavigate();
   const { user } = useAuth();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -35,8 +35,8 @@ export default function SubmitPinPage() {
 
     // Check if user already submitted today
     getCurrentUser().then((currentUser) => {
-      if (currentUser?.hasSubmittedPin) {
-        setHasSubmittedToday(true);
+      if (currentUser) {
+        setTodayPinCount(currentUser.todayPinCount);
       }
     });
   }, [user, navigate]);
@@ -114,34 +114,83 @@ export default function SubmitPinPage() {
   return (
     <div className="page">
       <div className="page-inner">
-        <h2 className="page-title">Submit mood pin</h2>
-        <p className="page-subtitle">
-          Click on the map to place your pin, then select how you&apos;re feeling.
-        </p>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            marginBottom: 16,
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <h2 className="page-title" style={{ marginBottom: 8 }}>
+              Submit mood pin
+            </h2>
+            <p className="page-subtitle" style={{ marginBottom: 0 }}>
+              Click on the map to place your pin, then select how you&apos;re
+              feeling.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => navigate("/map")}
+            style={{ flexShrink: 0, marginLeft: 16 }}
+          >
+            View other pins
+          </button>
+        </div>
 
-        {hasSubmittedToday && (
+        {todayPinCount > 0 && (
           <div
             style={{
-              background: "#fef3c7",
-              border: "1px solid #fbbf24",
-              padding: 12,
+              background: todayPinCount >= 5 ? "#fee2e2" : "#f0f9ff",
+              border:
+                todayPinCount >= 5 ? "1px solid #ef4444" : "1px solid #0ea5e9",
+              padding: 6,
               borderRadius: 6,
               marginBottom: 16,
               fontSize: 14,
             }}
           >
-            You&apos;ve already submitted a pin today. You can submit up to 5
-            pins per day.
+            {todayPinCount >= 5 ? (
+              <>
+                🚫 You&apos;ve reached your daily limit of 5 pins. Come back
+                tomorrow!
+              </>
+            ) : (
+              <>
+                You have <strong>{5 - todayPinCount}</strong> pin
+                {5 - todayPinCount === 1 ? "" : "s"} left today!
+              </>
+            )}
           </div>
         )}
 
         {/* Interactive Mapbox map */}
-        <div ref={containerRef} className="mapbox-container" style={{ marginBottom: 16 }} />
+        <div
+          ref={containerRef}
+          className="mapbox-container"
+          style={{ marginBottom: 16 }}
+        />
 
         {pinPlaced ? (
-          <div style={{ fontSize: 14, color: "#16a34a", marginBottom: 16, display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" }}>
+          <div
+            style={{
+              fontSize: 14,
+              color: "#16a34a",
+              marginBottom: 16,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              justifyContent: "space-between",
+            }}
+          >
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              ✓ <strong>Pin placed at {lat.toFixed(4)}, {lng.toFixed(4)}</strong>
+              ✓{" "}
+              <strong>
+                Pin placed at {lat.toFixed(4)}, {lng.toFixed(4)}
+              </strong>
             </div>
             <button
               type="button"

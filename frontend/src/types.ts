@@ -40,4 +40,5 @@ export interface CurrentUser {
   id: string; // UUID from Supabase auth
   email: string;
   hasSubmittedPin: boolean;
+  todayPinCount: number;
 }
