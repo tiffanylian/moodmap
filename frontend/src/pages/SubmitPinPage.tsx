@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { createPin, getCurrentUser } from "../api/client";
+import { useAuth } from "../contexts/AuthContext";
 import type { Mood } from "../types";
 
 const MOODS: Mood[] = ["HYPED", "VIBING", "MID", "STRESSED", "TIRED"];
@@ -7,19 +9,44 @@ const MOODS: Mood[] = ["HYPED", "VIBING", "MID", "STRESSED", "TIRED"];
 export default function SubmitPinPage() {
   const [mood, setMood] = useState<Mood>("MID");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [hasSubmittedToday, setHasSubmittedToday] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // placeholder coords for now
+  // placeholder coords for now - in real app, get from map click
   const lat = 39.9522;
   const lng = -75.1932;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!user) {
+      navigate("/");
+      return;
+    }
+
+    // Check if user already submitted today
+    getCurrentUser().then((currentUser) => {
+      if (currentUser?.hasSubmittedPin) {
+        setHasSubmittedToday(true);
+      }
+    });
+  }, [user, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
 
-    // TODO: replace with real backend call
-    console.log("Submitting pin:", { lat, lng, mood, message });
-
-    navigate("/map");
+    try {
+      await createPin({ lat, lng, mood, message: message || undefined });
+      navigate("/map");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to submit pin");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -30,13 +57,32 @@ export default function SubmitPinPage() {
           Share how you&apos;re feeling somewhere on campus to unlock the map.
         </p>
 
+        {hasSubmittedToday && (
+          <div
+            style={{
+              background: "#fef3c7",
+              border: "1px solid #fbbf24",
+              padding: 12,
+              borderRadius: 6,
+              marginBottom: 16,
+              fontSize: 14,
+            }}
+          >
+            You&apos;ve already submitted a pin today. You can submit up to 5
+            pins per day.
+          </div>
+        )}
+
         {/* Map placeholder */}
         <div className="map-shell">
-          Map placeholder — pin will be dropped around{" "}
-          {lat.toFixed(4)}, {lng.toFixed(4)}
+          Map placeholder — pin will be dropped around {lat.toFixed(4)},{" "}
+          {lng.toFixed(4)}
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: "flex", flexDirection: "column", gap: 16 }}
+        >
           <div>
             <label className="auth-label">How are you feeling?</label>
             <div className="mood-row">
@@ -73,8 +119,17 @@ export default function SubmitPinPage() {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary" style={{ width: "100%", marginTop: 4 }}>
-            Submit mood
+          {error && (
+            <div style={{ color: "#ef4444", fontSize: 14 }}>{error}</div>
+          )}
+
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{ width: "100%", marginTop: 4 }}
+            disabled={loading}
+          >
+            {loading ? "Submitting..." : "Submit mood"}
           </button>
         </form>
       </div>
