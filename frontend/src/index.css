@@ -1,4 +1,5 @@
 @import url("https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.css");
+@import "tailwindcss";
 
 :root {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -172,7 +173,8 @@ body {
 }
 
 .btn-primary {
-  background: #011F5B; /* Penn Blue */
+  background: #011F5B;
+  /* Penn Blue */
   color: white;
 }
 

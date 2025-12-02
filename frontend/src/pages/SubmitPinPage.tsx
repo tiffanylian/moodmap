@@ -3,9 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { createPin, getCurrentUser } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
 import mapboxgl from "mapbox-gl";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Mood } from "../types";
+import EmotionButton from "../components/EmotionButton";
+import FloatingStars from "../components/FloatingStars";
 
-const MOODS: Mood[] = ["HYPED", "VIBING", "MID", "STRESSED", "TIRED"];
+const MOODS: Array<{ emoji: string; label: Mood; color: string }> = [
+  { emoji: "😰", label: "STRESSED", color: "#A7C7E7" },
+  { emoji: "😴", label: "TIRED", color: "#B8B8B8" },
+  { emoji: "😎", label: "VIBING", color: "#FFE17B" },
+  { emoji: "🔥", label: "HYPED", color: "#FF9AA2" },
+  { emoji: "😐", label: "MID", color: "#B4E7CE" },
+];
 
 // Set Mapbox token
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN as string;
@@ -19,6 +28,7 @@ export default function SubmitPinPage() {
   const [lat, setLat] = useState(39.9522);
   const [lng, setLng] = useState(-75.1932);
   const [pinPlaced, setPinPlaced] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -98,169 +108,243 @@ export default function SubmitPinPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!pinPlaced) {
+      setError("Please click on the map to place your pin!");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
       await createPin({ lat, lng, mood, message: message || undefined });
-      navigate("/map");
+      setShowSuccess(true);
+      setTimeout(() => {
+        navigate("/map");
+      }, 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit pin");
-    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="page">
-      <div className="page-inner">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            marginBottom: 16,
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <h2 className="page-title" style={{ marginBottom: 8 }}>
-              Submit mood pin
-            </h2>
-            <p className="page-subtitle" style={{ marginBottom: 0 }}>
-              Click on the map to place your pin, then select how you&apos;re
-              feeling.
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-pink-100 via-purple-50 to-blue-100">
+      <FloatingStars selectedMood={mood} />
+
+      {/* Decorative blobs */}
+      <div className="absolute top-0 left-0 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob" />
+      <div className="absolute top-0 right-0 w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000" />
+      <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000" />
+
+      <div className="relative z-10 container mx-auto px-4 py-8 max-w-2xl">
+        <div className="flex justify-between items-start mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex-1"
+          >
+            <motion.h1
+              className="text-4xl font-black mb-2 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent"
+              animate={{ scale: [1, 1.02, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              how r u feeling today?
+            </motion.h1>
+            <p className="text-gray-600 text-sm flex items-center gap-2">
+              ✨ check in with yourself bestie ✨
             </p>
-          </div>
+          </motion.div>
           <button
             type="button"
-            className="btn btn-outline"
+            className="px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full font-semibold text-sm hover:bg-white shadow-md transition-all"
             onClick={() => navigate("/map")}
-            style={{ flexShrink: 0, marginLeft: 16 }}
           >
-            View other pins
+            view pins
           </button>
         </div>
 
         {todayPinCount > 0 && (
-          <div
-            style={{
-              background: todayPinCount >= 5 ? "#fee2e2" : "#f0f9ff",
-              border:
-                todayPinCount >= 5 ? "1px solid #ef4444" : "1px solid #0ea5e9",
-              padding: 6,
-              borderRadius: 6,
-              marginBottom: 16,
-              fontSize: 14,
-            }}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`mb-6 p-4 rounded-2xl backdrop-blur-sm font-medium text-sm ${
+              todayPinCount >= 5
+                ? "bg-red-100/80 border-2 border-red-300 text-red-800"
+                : "bg-blue-100/80 border-2 border-blue-300 text-blue-800"
+            }`}
           >
             {todayPinCount >= 5 ? (
-              <>
-                🚫 You&apos;ve reached your daily limit of 5 pins. Come back
-                tomorrow!
-              </>
+              <>🚫 daily limit reached! come back tomorrow bestie</>
             ) : (
               <>
-                You have <strong>{5 - todayPinCount}</strong> pin
+                ✨ you have <strong>{5 - todayPinCount}</strong> vibe check
                 {5 - todayPinCount === 1 ? "" : "s"} left today!
               </>
             )}
-          </div>
+          </motion.div>
         )}
 
-        {/* Interactive Mapbox map */}
-        <div
-          ref={containerRef}
-          className="mapbox-container"
-          style={{ marginBottom: 16 }}
-        />
-
-        {pinPlaced ? (
-          <div
-            style={{
-              fontSize: 14,
-              color: "#16a34a",
-              marginBottom: 16,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              ✓{" "}
-              <strong>
-                Pin placed at {lat.toFixed(4)}, {lng.toFixed(4)}
-              </strong>
-            </div>
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={handleResetLocation}
-              style={{ padding: "6px 12px", fontSize: "12px" }}
+        <AnimatePresence mode="wait">
+          {!showSuccess ? (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
             >
-              Change
-            </button>
-          </div>
-        ) : (
-          <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 16 }}>
-            📍 Click on the map to place your pin
-          </div>
-        )}
+              {/* Map Section */}
+              <div className="relative bg-white/80 backdrop-blur-sm rounded-3xl p-6 mb-6 shadow-2xl border-2 border-white">
+                <div className="absolute -top-4 left-8 w-20 h-8 bg-amber-200/80 rotate-[-8deg] shadow-md rounded-sm" />
+                <div className="absolute -top-4 right-8 w-20 h-8 bg-amber-200/80 rotate-[8deg] shadow-md rounded-sm" />
 
-        <form
-          onSubmit={handleSubmit}
-          style={{ display: "flex", flexDirection: "column", gap: 16 }}
-        >
-          <div>
-            <label className="auth-label">How are you feeling?</label>
-            <div className="mood-row">
-              {MOODS.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  className={
-                    "mood-pill" + (m === mood ? " mood-pill--selected" : "")
-                  }
-                  onClick={() => setMood(m)}
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  📍 where u at?
+                </label>
+                <div
+                  ref={containerRef}
+                  className="w-full h-80 rounded-2xl overflow-hidden border-2 border-gray-200 mb-3"
+                />
+                {pinPlaced ? (
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-green-600 font-medium">
+                      ✓ pin placed at {lat.toFixed(4)}, {lng.toFixed(4)}
+                    </div>
+                    <button
+                      type="button"
+                      className="px-3 py-1 bg-white rounded-full text-xs font-semibold border border-gray-300 hover:bg-gray-50"
+                      onClick={handleResetLocation}
+                    >
+                      change
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500">
+                    click on the map to drop ur pin
+                  </div>
+                )}
+              </div>
+
+              {/* Emotion Selection */}
+              <div className="relative bg-white/80 backdrop-blur-sm rounded-3xl p-6 mb-6 shadow-2xl border-2 border-white">
+                <div className="absolute -bottom-4 right-8 w-20 h-8 bg-amber-200/80 rotate-[8deg] shadow-md rounded-sm" />
+
+                <label className="block text-sm font-semibold text-gray-700 mb-4">
+                  what&apos;s the vibe?
+                </label>
+                <div className="flex flex-wrap justify-center gap-4">
+                  {MOODS.map((m) => (
+                    <EmotionButton
+                      key={m.label}
+                      {...m}
+                      isSelected={mood === m.label}
+                      onClick={() => setMood(m.label)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes Section */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-gradient-to-br from-amber-100 to-amber-200 rounded-3xl p-6 shadow-lg mb-6"
+              >
+                <label className="block text-sm font-semibold text-amber-900 mb-3">
+                  wanna spill? (optional)
+                </label>
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  maxLength={200}
+                  placeholder="like, what's on your mind rn..."
+                  className="w-full min-h-[100px] bg-white/50 border-2 border-amber-300/50 rounded-2xl p-3 text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-amber-400 focus:outline-none resize-none"
+                />
+                <div className="text-xs text-amber-700 mt-2 text-right">
+                  {message.length}/200
+                </div>
+              </motion.div>
+
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4 p-3 bg-red-100 border-2 border-red-300 rounded-2xl text-red-700 text-sm font-medium text-center"
                 >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
+                  {error}
+                </motion.div>
+              )}
 
-          <div>
-            <label className="auth-label">
-              Add a short note{" "}
-              <span style={{ color: "#9ca3af", fontWeight: 400 }}>
-                (optional, up to 200 characters)
-              </span>
-            </label>
-            <textarea
-              className="auth-input"
-              maxLength={200}
-              rows={4}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Today I feel..."
-              style={{ resize: "vertical" }}
-            />
-          </div>
-
-          {error && (
-            <div style={{ color: "#ef4444", fontSize: 14 }}>{error}</div>
+              {/* Submit Button */}
+              <button
+                onClick={handleSubmit}
+                disabled={loading || todayPinCount >= 5}
+                className="w-full h-14 text-lg font-bold bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 hover:from-purple-600 hover:via-pink-600 hover:to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <motion.span
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                  >
+                    ✨
+                  </motion.span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    log this vibe
+                    <span className="text-xl">💖</span>
+                  </span>
+                )}
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="text-center py-20"
+            >
+              <motion.div
+                animate={{
+                  scale: [1, 1.2, 1],
+                  rotate: [0, 10, -10, 0],
+                }}
+                transition={{ duration: 0.5 }}
+                className="text-8xl mb-4"
+              >
+                ✨
+              </motion.div>
+              <h2 className="text-3xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                slay! logged ✓
+              </h2>
+              <p className="text-gray-600">your vibe has been captured</p>
+            </motion.div>
           )}
-
-          <button
-            type="submit"
-            className="btn btn-primary"
-            style={{ width: "100%", marginTop: 4 }}
-            disabled={loading}
-          >
-            {loading ? "Submitting..." : "Submit mood"}
-          </button>
-        </form>
+        </AnimatePresence>
       </div>
+
+      <style>{`
+        @keyframes blob {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+      `}</style>
     </div>
   );
 }
