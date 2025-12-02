@@ -8,7 +8,7 @@ import EmotionButton from '../components/EmotionButton';
 import FloatingStars from '../components/FloatingStars';
 import LoginScreen from '../components/LoginScreen';
 import MapPinScreen from '../components/MapPinScreen';
-import { Sparkles, Heart } from 'lucide-react';
+import { Sparkles, Heart, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 
 const emotions = [
@@ -88,6 +88,12 @@ export default function MoodTracker() {
       <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000" />
 
       <div className="relative z-10 container mx-auto px-4 py-8 max-w-md">
+        <button
+          onClick={() => setIsLoggedIn(false)}
+          className="absolute top-4 right-4 p-2 text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          <LogOut className="w-5 h-5" />
+        </button>
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
