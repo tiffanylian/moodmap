@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPin, getCurrentUser } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
+import { quickValidateText, checkContentQuality } from "../utils/qcValidator";
 import mapboxgl from "mapbox-gl";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Mood } from "../types";
@@ -24,6 +25,7 @@ export default function SubmitPinPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [qcWarning, setQcWarning] = useState("");
   const [todayPinCount, setTodayPinCount] = useState(0);
   const [lat, setLat] = useState(39.9522);
   const [lng, setLng] = useState(-75.1932);
@@ -106,6 +108,19 @@ export default function SubmitPinPage() {
     setPinPlaced(false);
   };
 
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newMessage = e.target.value;
+    setMessage(newMessage);
+
+    // Perform quick client-side validation
+    const { hasIssues, warningMessage } = quickValidateText(newMessage);
+    if (hasIssues) {
+      setQcWarning(warningMessage);
+    } else {
+      setQcWarning("");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -118,6 +133,19 @@ export default function SubmitPinPage() {
     setError("");
 
     try {
+      // Perform full QC check on message before submission
+      if (message) {
+        const qcResult = await checkContentQuality(message);
+        
+        // If content is blocked, don't submit
+        if (qcResult.status === "blocked") {
+          setError(qcResult.message);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Proceed with submission
       await createPin({ lat, lng, mood, message: message || undefined });
       setShowSuccess(true);
       setTimeout(() => {
@@ -257,11 +285,26 @@ export default function SubmitPinPage() {
                 </label>
                 <textarea
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  onChange={handleMessageChange}
                   maxLength={200}
                   placeholder="like, what's on your mind rn..."
                   className="w-full min-h-[100px] bg-white/50 border-2 border-amber-300/50 rounded-2xl p-3 text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-amber-400 focus:outline-none resize-none"
                 />
+            {qcWarning && (
+              <div
+                style={{
+                  color: "#f97316",
+                  fontSize: 13,
+                  marginTop: 8,
+                  padding: "8px 12px",
+                  backgroundColor: "#ffedd5",
+                  borderRadius: 4,
+                  border: "1px solid #fed7aa",
+                }}
+              >
+                ⚠️ {qcWarning}
+              </div>
+            )}
                 <div className="text-xs text-amber-700 mt-2 text-right">
                   {message.length}/200
                 </div>
