@@ -22,7 +22,7 @@ const MOODS: Array<{ emoji: string; label: Mood; color: string }> = [
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
 export default function SubmitPinPage() {
-  const [mood, setMood] = useState<Mood>("MID");
+  const [mood, setMood] = useState<Mood | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -199,6 +199,11 @@ export default function SubmitPinPage() {
 
     if (!pinPlaced) {
       setError("Please click on the map to place your pin!");
+      return;
+    }
+
+    if (!mood) {
+      setError("Please select a mood!");
       return;
     }
 

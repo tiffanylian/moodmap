@@ -20,6 +20,8 @@ export default function EmotionButton({
     <motion.button
       whileHover={{ scale: 1.1, rotate: 5 }}
       whileTap={{ scale: 0.95 }}
+      animate={isSelected ? { scale: 1.1, rotate: 5 } : { scale: 1, rotate: 0 }}
+      transition={{ duration: 0.3 }}
       onClick={onClick}
       className={`relative flex flex-col items-center justify-center w-20 h-20 rounded-2xl transition-all duration-300 ${
         isSelected
@@ -28,15 +30,7 @@ export default function EmotionButton({
       }`}
       style={{ backgroundColor: color }}
     >
-      <motion.span
-        className="text-3xl mb-0.5"
-        animate={
-          isSelected ? { scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] } : {}
-        }
-        transition={{ duration: 0.5 }}
-      >
-        {emoji}
-      </motion.span>
+      <motion.span className="text-3xl mb-0.5">{emoji}</motion.span>
       <span className="text-xs font-bold text-white drop-shadow-md lowercase tracking-wide">
         {label}
       </span>
