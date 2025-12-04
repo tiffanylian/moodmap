@@ -1,22 +1,16 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-
-interface User {
-  email: string;
-}
+import { supabase } from "../lib/supabase";
+import type { User } from "@supabase/supabase-js";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string) => void;
-  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  loading: false,
-  login: () => {},
-  logout: () => {},
+  loading: true,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -24,26 +18,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check localStorage for existing session
-    const storedEmail = localStorage.getItem("pennEmail");
-    if (storedEmail) {
-      setUser({ email: storedEmail });
-    }
-    setLoading(false);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = (email: string) => {
-    localStorage.setItem("pennEmail", email);
-    setUser({ email });
-  };
-
-  const logout = () => {
-    localStorage.removeItem("pennEmail");
-    setUser(null);
-  };
-
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading }}>
       {children}
     </AuthContext.Provider>
   );
