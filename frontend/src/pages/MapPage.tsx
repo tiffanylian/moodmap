@@ -31,7 +31,7 @@ export default function MapPage() {
       try {
         const data = await fetchPins();
         setPins(data);
-        
+
         const userStreak = await calculateStreak();
         setStreak(userStreak);
       } catch (err) {
@@ -223,36 +223,64 @@ export default function MapPage() {
 
           {!loading && pins.length > 0 && (
             <div className="max-h-80 overflow-auto space-y-2">
-              {pins.map((pin) => (
-                <motion.div
-                  key={pin.id}
-                  whileHover={{ scale: 1.02 }}
-                  onClick={() => {
-                    if (mapRef.current) {
-                      mapRef.current.centerOnPin(pin.lat, pin.lng, 18);
-                    }
-                  }}
-                  className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 cursor-pointer hover:bg-white/80 transition-all"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="font-bold text-gray-800 text-sm">
-                      {pin.mood}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(pin.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                  {pin.message && (
-                    <p className="text-sm text-gray-700 mb-2">{pin.message}</p>
-                  )}
-                  <div className="text-xs text-gray-500">
-                    📍 {pin.lat.toFixed(4)}, {pin.lng.toFixed(4)}
-                  </div>
-                </motion.div>
-              ))}
+              {pins.map((pin) => {
+                // Get color for mood to match the map
+                const moodColors: Record<string, string> = {
+                  HYPED: "#22c55e",
+                  VIBING: "#0ea5e9",
+                  MID: "#fbbf24",
+                  STRESSED: "#f97316",
+                  TIRED: "#6366f1",
+                };
+                const color = moodColors[pin.mood] || "#0ea5e9";
+
+                return (
+                  <motion.div
+                    key={pin.id}
+                    whileHover={{ scale: 1.02 }}
+                    onClick={() => {
+                      if (mapRef.current) {
+                        mapRef.current.centerOnPin(pin.lat, pin.lng, 18);
+                      }
+                    }}
+                    className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 cursor-pointer hover:bg-white/80 transition-all"
+                    style={{
+                      borderLeft: `4px solid ${color}`,
+                    }}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div
+                          style={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: "50%",
+                            backgroundColor: color,
+                            boxShadow: `0 0 8px ${color}66`,
+                          }}
+                        />
+                        <span className="font-bold text-gray-800 text-sm">
+                          {pin.mood}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {new Date(pin.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                    {pin.message && (
+                      <p className="text-sm text-gray-700 mb-2">
+                        {pin.message}
+                      </p>
+                    )}
+                    <div className="text-xs text-gray-500">
+                      📍 {pin.lat.toFixed(4)}, {pin.lng.toFixed(4)}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           )}
         </motion.div>

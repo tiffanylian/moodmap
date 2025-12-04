@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import mapboxgl from "mapbox-gl";
 import type { MoodPin } from "../types";
 
@@ -31,7 +37,10 @@ function moodColor(mood: MoodPin["mood"]): string {
   }
 }
 
-export default forwardRef<MapViewHandle, Props>(function MapView({ pins }, ref) {
+export default forwardRef<MapViewHandle, Props>(function MapView(
+  { pins },
+  ref
+) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -88,16 +97,25 @@ export default forwardRef<MapViewHandle, Props>(function MapView({ pins }, ref) 
       const el = document.createElement("div");
       const mood = pin.mood;
       const color = moodColor(mood);
-      
+
       // Calculate size based on zoom level
       const pinSize = Math.max(16, Math.min(40, 8 + zoom * 1.5));
-      
+
       // Create gradient element with CSS - looks like a light source
       el.style.width = `${pinSize}px`;
       el.style.height = `${pinSize}px`;
       el.style.borderRadius = "50%";
       el.style.background = `radial-gradient(circle at center, ${color}, ${color}cc 20%, ${color}99 40%, ${color}55 65%, transparent)`;
       el.style.cursor = "pointer";
+
+      // Add click handler to zoom to pin
+      el.addEventListener("click", () => {
+        map.flyTo({
+          center: [pin.lng, pin.lat],
+          zoom: 18,
+          duration: 1000,
+        });
+      });
 
       const marker = new mapboxgl.Marker(el)
         .setLngLat([pin.lng, pin.lat])

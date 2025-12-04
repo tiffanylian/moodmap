@@ -63,10 +63,11 @@ export default function SubmitPinPage() {
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
 
+    // Initialize map with default center (will be updated by location)
     mapRef.current = new mapboxgl.Map({
       container: containerRef.current,
       style: "mapbox://styles/mapbox/streets-v12",
-      center: [lng, lat],
+      center: [-75.1932, 39.9522],
       zoom: 14,
     });
 
@@ -103,7 +104,7 @@ export default function SubmitPinPage() {
       setLat(clickedLat);
       setPinPlaced(true);
     });
-  }, []);
+  }, [lng, lat]);
 
   const handleResetLocation = () => {
     // Remove the current marker
@@ -245,22 +246,14 @@ export default function SubmitPinPage() {
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                   📍 where u at?
                 </label>
+
                 <div
                   ref={containerRef}
                   className="w-full h-80 rounded-2xl overflow-hidden border-2 border-gray-200 mb-3"
                 />
                 {pinPlaced ? (
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2 text-green-600 font-medium">
-                      ✓ pin placed at {lat.toFixed(4)}, {lng.toFixed(4)}
-                    </div>
-                    <button
-                      type="button"
-                      className="px-3 py-1 bg-white rounded-full text-xs font-semibold border border-gray-300 hover:bg-gray-50"
-                      onClick={handleResetLocation}
-                    >
-                      change
-                    </button>
+                  <div className="text-sm text-green-600 font-medium">
+                    ✓ pin placed at {lat.toFixed(4)}, {lng.toFixed(4)}
                   </div>
                 ) : (
                   <div className="text-sm text-gray-500">

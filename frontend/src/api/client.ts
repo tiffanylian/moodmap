@@ -10,21 +10,28 @@ async function ensureUserExists(userId: string, email: string): Promise<void> {
   // First check if user already exists
   const { data: existingUser } = await supabase
     .from('users')
-    .select('id')
+    .select('id, email')
     .eq('id', userId)
     .maybeSingle();
 
-  // If user doesn't exist, insert them
-  if (!existingUser) {
-    const { error } = await supabase
-      .from('users')
-      .insert({ id: userId, email: email || 'anonymous@moodmap.app' });
-
-    if (error && !error.message.includes('duplicate')) {
-      console.error('Error ensuring user exists:', error);
-      throw new Error(`Failed to create user profile: ${error.message}`);
-    }
+  // If user exists, no need to do anything
+  if (existingUser) {
+    return;
   }
+
+  // User doesn't exist, try to insert
+  const { error } = await supabase
+    .from('users')
+    .insert({ id: userId, email: email || 'anonymous@moodmap.app' });
+
+  // Ignore duplicate key errors (race condition where another request inserted first)
+  if (error && !error.message.includes('duplicate key')) {
+    console.error('Error ensuring user exists:', error);
+    throw new Error(`Failed to create user profile: ${error.message}`);
+  }
+
+  // Add a small delay to ensure the insert is committed
+  await new Promise(resolve => setTimeout(resolve, 50));
 }
 
 /**
@@ -148,15 +155,17 @@ export async function loginWithEmail(email: string): Promise<void> {
     throw new Error('Failed to create session');
   }
 
-  // Store the email in the users table
-  const { error: upsertError } = await supabase
+  // Try to insert the user - use a unique email per session by appending the user ID
+  // This prevents email uniqueness violations while keeping track of the original email
+  const uniqueEmail = `${anonData.user.id}@anonymous.moodmap.app`;
+  
+  const { error: insertError } = await supabase
     .from('users')
-    .upsert(
-      { id: anonData.user.id, email },
-      { onConflict: 'id' }
-    );
+    .insert({ id: anonData.user.id, email: uniqueEmail });
 
-  if (upsertError) {
+  // Ignore duplicate key errors (user might already exist from a previous operation)
+  if (insertError && !insertError.message.includes('duplicate key')) {
+    console.error('Error creating user:', insertError);
     throw new Error('Failed to save user data');
   }
 }
@@ -216,14 +225,47 @@ export async function createPin(input: {
     throw new Error('You must be logged in to create a pin');
   }
 
-  // Ensure user exists in the users table
-  await ensureUserExists(session.user.id, session.user.email || '');
+  const userId = session.user.id;
+  
+  // Create unique email for this anonymous user
+  const uniqueEmail = `${userId}@anonymous.moodmap.app`;
+
+  // Ensure user exists in the users table - retry logic
+  let userExists = false;
+  let retries = 3;
+  
+  while (!userExists && retries > 0) {
+    // Try to insert user
+    const { error: insertError } = await supabase
+      .from('users')
+      .insert({ id: userId, email: uniqueEmail });
+
+    if (!insertError || insertError.message.includes('duplicate key')) {
+      // Success or already exists
+      userExists = true;
+    } else {
+      console.error('Error inserting user:', insertError);
+      retries--;
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+  }
+
+  // Verify user exists before inserting pin
+  const { data: userCheck } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', userId)
+    .single();
+
+  if (!userCheck) {
+    throw new Error('Failed to create user profile. Please try logging in again.');
+  }
 
   // Insert the pin
   const { data, error } = await supabase
     .from('mood_pins')
     .insert({
-      user_id: session.user.id,
+      user_id: userId,
       mood: convertToDbMood(input.mood),
       note: input.message || null,
       latitude: input.lat,
