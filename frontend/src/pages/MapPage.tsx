@@ -2,15 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchPins } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
+import { motion } from "framer-motion";
 import type { MoodPin } from "../types";
 import MapView from "../components/MapView";
+import FloatingStars from "../components/FloatingStars";
 
 export default function MapPage() {
   const [pins, setPins] = useState<MoodPin[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const mapRef = useRef<{ centerOnPin: (lat: number, lng: number, zoom?: number) => void } | null>(null);
+  const mapRef = useRef<{
+    centerOnPin: (lat: number, lng: number, zoom?: number) => void;
+  } | null>(null);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -35,151 +39,184 @@ export default function MapPage() {
   }, [user, navigate]);
 
   return (
-    <div className="page">
-      <div className="page-inner">
-        <h2 className="page-title" style={{ marginBottom: 20 }}>
-          Mood Map
-        </h2>
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-pink-100 via-purple-50 to-blue-100">
+      <FloatingStars selectedMood="MID" />
+
+      {/* Decorative blobs */}
+      <div className="absolute top-0 left-0 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob" />
+      <div className="absolute top-0 right-0 w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000" />
+      <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000" />
+
+      <div className="relative z-10 container mx-auto px-4 py-8 max-w-2xl">
+        <div className="flex justify-between items-start mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex-1"
+          >
+            <motion.h1
+              className="text-4xl font-black mb-2 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent"
+              animate={{ scale: [1, 1.02, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              vibe map 🗺️
+            </motion.h1>
+            <p className="text-gray-600 text-sm flex items-center gap-2">
+              ✨ see what everyone&apos;s feeling ✨
+            </p>
+          </motion.div>
+          <button
+            type="button"
+            className="px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full font-semibold text-sm hover:bg-white shadow-md transition-all"
+            onClick={() => navigate("/submit")}
+          >
+            add pin
+          </button>
+        </div>
 
         {/* Legend */}
-        <div
-          style={{
-            background: "white",
-            borderRadius: 8,
-            padding: "8px 12px",
-            marginBottom: 12,
-            border: "1px solid #e5e7eb",
-          }}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative bg-white/80 backdrop-blur-sm rounded-3xl p-6 mb-6 shadow-2xl border-2 border-white"
         >
-          <h4 style={{ margin: "0 0 6px 0", fontSize: "12px", fontWeight: 600, color: "#1f2937" }}>
-            Moods
+          <div className="absolute -top-4 left-8 w-20 h-8 bg-amber-200/80 rotate-[-8deg] shadow-md rounded-sm" />
+
+          <h4 className="text-sm font-semibold text-gray-700 mb-4">
+            mood legend
           </h4>
-          <div
-            style={{
-              display: "flex",
-              gap: "12px",
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="flex flex-wrap gap-4">
             {[
-              { mood: "HYPED", color: "#22c55e" },
-              { mood: "VIBING", color: "#0ea5e9" },
-              { mood: "MID", color: "#fbbf24" },
-              { mood: "STRESSED", color: "#f97316" },
-              { mood: "TIRED", color: "#6366f1" },
-            ].map(({ mood, color }) => (
-              <div key={mood} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              { mood: "HYPED", color: "#22c55e", emoji: "🔥" },
+              { mood: "VIBING", color: "#0ea5e9", emoji: "😎" },
+              { mood: "MID", color: "#fbbf24", emoji: "😐" },
+              { mood: "STRESSED", color: "#f97316", emoji: "😰" },
+              { mood: "TIRED", color: "#6366f1", emoji: "😴" },
+            ].map(({ mood, color, emoji }) => (
+              <div key={mood} className="flex items-center gap-2">
                 <div
                   style={{
-                    width: 10,
-                    height: 10,
+                    width: 14,
+                    height: 14,
                     borderRadius: "50%",
                     backgroundColor: color,
-                    border: "2px solid white",
-                    boxShadow: "0 0 0 1px rgba(15,23,42,0.2)",
+                    border: "3px solid white",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
                     flexShrink: 0,
                   }}
                 />
-                <span style={{ fontSize: "12px", color: "#374151", whiteSpace: "nowrap" }}>
-                  {mood}
+                <span className="text-sm text-gray-700 font-medium whitespace-nowrap">
+                  {emoji} {mood}
                 </span>
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Mapbox map - reduced height */}
-        <div style={{ height: 300, marginBottom: 16, borderRadius: 8, overflow: "hidden" }}>
-          <MapView pins={pins} ref={mapRef} />
-        </div>
-
-        {/* Recent pins section - scrollable white box */}
-        <div
-          style={{
-            background: "white",
-            borderRadius: 8,
-            padding: 16,
-            border: "1px solid #e5e7eb",
-            maxHeight: 300,
-            display: "flex",
-            flexDirection: "column",
-          }}
+        {/* Map Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="relative bg-white/80 backdrop-blur-sm rounded-3xl p-6 mb-6 shadow-2xl border-2 border-white"
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 12,
-              gap: 8,
-            }}
-          >
-            <h3 style={{ fontSize: "1rem", marginBottom: 0, marginTop: 0 }}>Recent pins</h3>
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() => navigate("/submit")}
-              style={{ padding: "6px 12px", fontSize: "0.9rem" }}
-            >
-              Add pin
-            </button>
+          <div className="absolute -top-4 right-8 w-20 h-8 bg-amber-200/80 rotate-[8deg] shadow-md rounded-sm" />
+
+          <div className="h-80 rounded-2xl overflow-hidden border-2 border-gray-200">
+            <MapView pins={pins} ref={mapRef} />
+          </div>
+        </motion.div>
+
+        {/* Recent pins section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-gradient-to-br from-amber-100 to-amber-200 rounded-3xl p-6 shadow-lg"
+        >
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold text-amber-900">recent vibes</h3>
+            <span className="text-sm text-amber-700 font-medium">
+              {pins.length} {pins.length === 1 ? "pin" : "pins"}
+            </span>
           </div>
 
-          {loading && <p className="page-subtitle">Loading…</p>}
+          {loading && (
+            <div className="text-center py-8">
+              <motion.span
+                animate={{ rotate: 360 }}
+                transition={{
+                  duration: 1,
+                  repeat: Infinity,
+                  ease: "linear",
+                }}
+                className="text-4xl inline-block"
+              >
+                ✨
+              </motion.span>
+            </div>
+          )}
 
           {!loading && pins.length === 0 && (
-            <p className="page-subtitle">No pins yet.</p>
+            <div className="text-center py-8 text-amber-700">
+              <p className="text-lg mb-2">📍</p>
+              <p className="text-sm">no vibes logged yet... be the first!</p>
+            </div>
           )}
 
           {!loading && pins.length > 0 && (
-            <ul
-              className="pin-list"
-              style={{
-                overflow: "auto",
-                flex: 1,
-                margin: 0,
-                padding: 0,
-                listStyle: "none",
-              }}
-            >
+            <div className="max-h-80 overflow-auto space-y-2">
               {pins.map((pin) => (
-                <li
+                <motion.div
                   key={pin.id}
-                  className="pin-item"
-                  style={{
-                    marginBottom: 8,
-                    cursor: "pointer",
-                    padding: "8px",
-                    borderRadius: "4px",
-                    transition: "background-color 0.2s",
-                  }}
+                  whileHover={{ scale: 1.02 }}
                   onClick={() => {
                     if (mapRef.current) {
                       mapRef.current.centerOnPin(pin.lat, pin.lng, 16);
                     }
                   }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = "#f3f4f6";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
-                  }}
+                  className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 cursor-pointer hover:bg-white/80 transition-all"
                 >
-                  <strong>{pin.mood}</strong>
-                  {pin.message && ` — ${pin.message}`}
-                  <div className="pin-meta">
-                    {pin.lat.toFixed(4)}, {pin.lng.toFixed(4)} ·{" "}
-                    {new Date(pin.createdAt).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                  <div className="flex items-start justify-between mb-2">
+                    <span className="font-bold text-gray-800 text-sm">
+                      {pin.mood}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {new Date(pin.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
                   </div>
-                </li>
+                  {pin.message && (
+                    <p className="text-sm text-gray-700 mb-2">{pin.message}</p>
+                  )}
+                  <div className="text-xs text-gray-500">
+                    📍 {pin.lat.toFixed(4)}, {pin.lng.toFixed(4)}
+                  </div>
+                </motion.div>
               ))}
-            </ul>
+            </div>
           )}
-        </div>
+        </motion.div>
       </div>
+
+      <style>{`
+        @keyframes blob {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+      `}</style>
     </div>
   );
 }
