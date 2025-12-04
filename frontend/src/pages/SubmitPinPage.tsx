@@ -46,11 +46,15 @@ export default function SubmitPinPage() {
     }
 
     // Check if user already submitted today
-    getCurrentUser().then((currentUser) => {
-      if (currentUser) {
-        setTodayPinCount(currentUser.todayPinCount);
-      }
-    });
+    getCurrentUser()
+      .then((currentUser) => {
+        if (currentUser) {
+          setTodayPinCount(currentUser.todayPinCount);
+        }
+      })
+      .catch((err) => {
+        console.error("Error getting current user:", err);
+      });
   }, [user, navigate]);
 
   // Initialize interactive map

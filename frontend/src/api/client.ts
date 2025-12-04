@@ -3,6 +3,31 @@ import type { CurrentUser, MoodPin, Mood, fromDbMood, toDbMood } from "../types"
 import { fromDbMood as convertFromDbMood, toDbMood as convertToDbMood } from "../types";
 
 /**
+ * Helper function to ensure user exists in the users table
+ * Called before creating a pin or getting user info
+ */
+async function ensureUserExists(userId: string, email: string): Promise<void> {
+  // First check if user already exists
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  // If user doesn't exist, insert them
+  if (!existingUser) {
+    const { error } = await supabase
+      .from('users')
+      .insert({ id: userId, email: email || 'anonymous@moodmap.app' });
+
+    if (error && !error.message.includes('duplicate')) {
+      console.error('Error ensuring user exists:', error);
+      throw new Error(`Failed to create user profile: ${error.message}`);
+    }
+  }
+}
+
+/**
  * Get the current authenticated user and check if they've submitted a pin today
  */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
@@ -14,7 +39,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   }
 
   const userId = session.user.id;
-  const email = session.user.email || "";
+  const email = session.user.email || "anonymous@moodmap.app";
+
+  // Ensure user exists in the users table
+  await ensureUserExists(userId, email);
 
   // Check if user has submitted a pin today
   const today = new Date().toISOString().split('T')[0];
@@ -220,18 +248,4 @@ export async function createPin(input: {
     message: data.note || undefined,
     createdAt: data.created_at,
   };
-}
-
-/**
- * Helper function to ensure user exists in the users table
- * Called before creating a pin
- */
-async function ensureUserExists(userId: string, email: string): Promise<void> {
-  const { error } = await supabase
-    .from('users')
-    .upsert({ id: userId, email }, { onConflict: 'id' });
-
-  if (error && !error.message.includes('duplicate')) {
-    throw new Error(error.message);
-  }
 }
