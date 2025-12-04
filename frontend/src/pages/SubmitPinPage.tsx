@@ -33,12 +33,15 @@ export default function SubmitPinPage() {
   const [pinPlaced, setPinPlaced] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
+  const [isRequestingLocation, setIsRequestingLocation] = useState(false);
 
   const navigate = useNavigate();
   const { user } = useAuth();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const currentMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const locationAttemptedRef = useRef(false);
 
   // Redirect if not logged in and check daily submission
   useEffect(() => {
@@ -59,6 +62,69 @@ export default function SubmitPinPage() {
       });
   }, [user, navigate]);
 
+  // Request user's location on component mount
+  useEffect(() => {
+    if (locationAttemptedRef.current) return;
+    locationAttemptedRef.current = true;
+
+    if ("geolocation" in navigator) {
+      setIsRequestingLocation(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const userLat = position.coords.latitude;
+          const userLng = position.coords.longitude;
+          setLat(userLat);
+          setLng(userLng);
+          setIsRequestingLocation(false);
+
+          // If map is already initialized, update its center and add marker
+          if (mapRef.current) {
+            mapRef.current.easeTo({
+              center: [userLng, userLat],
+              zoom: 18,
+              duration: 1500,
+              easing: (t) => t * (2 - t), // ease-out quadratic
+            });
+
+            // Remove previous marker if it exists
+            if (currentMarkerRef.current) {
+              currentMarkerRef.current.remove();
+            }
+
+            // Create marker at user's location
+            const markerEl = document.createElement("div");
+            markerEl.style.width = "24px";
+            markerEl.style.height = "24px";
+            markerEl.style.borderRadius = "50%";
+            markerEl.style.backgroundColor = "#ef4444";
+            markerEl.style.border = "3px solid white";
+            markerEl.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
+            markerEl.style.cursor = "pointer";
+
+            const newMarker = new mapboxgl.Marker(markerEl)
+              .setLngLat([userLng, userLat])
+              .addTo(mapRef.current);
+
+            currentMarkerRef.current = newMarker;
+            setPinPlaced(true);
+          }
+        },
+        (error) => {
+          console.log("Geolocation error:", error);
+          setLocationDenied(true);
+          setIsRequestingLocation(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0,
+        }
+      );
+    } else {
+      setLocationDenied(true);
+    }
+  }, []);
+
   // Initialize interactive map
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
@@ -67,7 +133,7 @@ export default function SubmitPinPage() {
     mapRef.current = new mapboxgl.Map({
       container: containerRef.current,
       style: "mapbox://styles/mapbox/streets-v12",
-      center: [-75.1932, 39.9522],
+      center: [lng, lat],
       zoom: 14,
     });
 
@@ -251,9 +317,17 @@ export default function SubmitPinPage() {
                   ref={containerRef}
                   className="w-full h-80 rounded-2xl overflow-hidden border-2 border-gray-200 mb-3"
                 />
-                {pinPlaced ? (
+                {isRequestingLocation ? (
+                  <div className="text-sm text-blue-600 font-medium">
+                    📍 getting your location...
+                  </div>
+                ) : pinPlaced ? (
                   <div className="text-sm text-green-600 font-medium">
                     ✓ pin placed at {lat.toFixed(4)}, {lng.toFixed(4)}
+                  </div>
+                ) : locationDenied ? (
+                  <div className="text-sm text-gray-500">
+                    click on the map to drop ur pin
                   </div>
                 ) : (
                   <div className="text-sm text-gray-500">
